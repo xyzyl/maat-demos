@@ -1,0 +1,95 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Outreach Agent</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:900px;margin:2em auto;padding:0 1em;color:#1a1a1a}
+h1{font-size:1.4em;margin-bottom:0.2em}
+h2{font-size:1.0em;margin:1.5em 0 0.4em;color:#444}
+.muted{color:#666;font-size:0.9em}
+.box{border:1px solid #ddd;border-radius:4px;padding:0.8em;margin-top:0.4em;background:#fafafa}
+textarea,input{width:100%;font-family:ui-monospace,monospace;font-size:0.85em;padding:0.4em;border:1px solid #ccc;border-radius:3px;box-sizing:border-box}
+textarea{min-height:5em}
+button{margin-top:0.5em;padding:0.5em 1.2em;background:#1a5fb4;color:white;border:none;border-radius:3px;cursor:pointer}
+button:disabled{background:#aaa}
+.log{font-family:ui-monospace,monospace;font-size:0.85em;background:#0f0f0f;color:#ccc;padding:0.6em;border-radius:3px;height:18em;overflow-y:auto;white-space:pre-wrap}
+.info{color:#7ec5ff}.success{color:#a6e22e}.warn{color:#fd971f}.error{color:#f92672}
+code{font-family:ui-monospace,monospace;font-size:0.9em;background:#eee;padding:1px 4px;border-radius:2px}
+</style></head><body>
+<h1>Outreach Agent</h1>
+<p class="muted">Autonomous email campaigns under cryptographic delegation.</p>
+
+<h2>Identity</h2>
+<div class="box"><p class="muted">Paste this into the dashboard when issuing a delegation:</p>
+<code id="pk">…</code></div>
+
+<h2>Delegation</h2>
+<div class="box">
+<p class="muted">Status: <span id="phase">…</span> &middot; <span id="del-summary">no delegation</span></p>
+<textarea id="del-json" placeholder="paste delegation JSON here"></textarea>
+<button onclick="accept()">Accept delegation</button>
+<button onclick="clearDel()">Clear</button>
+</div>
+
+<h2>Campaign goal</h2>
+<div class="box">
+<p class="muted">One recipient per line. The body is sent verbatim to every recipient.</p>
+<textarea id="recipients" placeholder="alice@acme.com&#10;bob@acme.com"></textarea>
+<textarea id="body" placeholder="Email body…" style="min-height:7em"></textarea>
+<button onclick="submitGoal()">Run outreach</button>
+</div>
+
+<h2>Activity</h2>
+<div id="log" class="log"></div>
+
+<script>
+const lvlClass = { info: "info", success: "success", warn: "warn", error: "error" };
+
+async function refresh() {
+  const r = await fetch("/agent/v1/status");
+  const s = await r.json();
+  document.getElementById("phase").textContent = s.phase;
+  document.getElementById("pk").textContent = s.public_key_b64;
+  document.getElementById("del-summary").textContent = s.delegation
+    ? `id=${s.delegation.id_b64.slice(0,12)}… scopes=${s.delegation.scope_grants.join(",")} constraints=${s.delegation.constraint_count}`
+    : "no delegation";
+  // Activity (initial fill).
+  const log = document.getElementById("log");
+  if (!log._sse) {
+    log.innerHTML = "";
+    for (const e of s.recent_activity) appendLogEntry(e);
+    const es = new EventSource("/agent/v1/log");
+    es.onmessage = ev => { try { appendLogEntry(JSON.parse(ev.data)); } catch(e) {} };
+    log._sse = es;
+  }
+}
+function appendLogEntry(e) {
+  const log = document.getElementById("log");
+  const cls = lvlClass[e.level] || "info";
+  log.innerHTML += `<span class="${cls}">[${new Date(e.at).toLocaleTimeString()}] ${e.level.toUpperCase().padEnd(7)} </span>${escape(e.message)}\n`;
+  log.scrollTop = log.scrollHeight;
+}
+function escape(s){return s.replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));}
+
+async function accept() {
+  const j = document.getElementById("del-json").value.trim();
+  if (!j) return;
+  const r = await fetch("/agent/v1/delegation", { method:"POST", headers:{"content-type":"application/json"},
+    body: JSON.stringify({ delegation_json: j }) });
+  if (!r.ok) alert((await r.json()).error);
+  refresh();
+}
+async function clearDel() {
+  await fetch("/agent/v1/delegation", { method:"DELETE" });
+  refresh();
+}
+async function submitGoal() {
+  const recipients = document.getElementById("recipients").value
+    .split("\n").map(s => s.trim()).filter(Boolean);
+  const body = document.getElementById("body").value;
+  const r = await fetch("/agent/v1/goal", { method:"POST", headers:{"content-type":"application/json"},
+    body: JSON.stringify({ recipients, body }) });
+  if (!r.ok) alert((await r.json()).error);
+  refresh();
+}
+refresh();
+setInterval(refresh, 4000);
+</script></body></html>

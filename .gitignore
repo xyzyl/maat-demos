@@ -1,0 +1,7 @@
+target/
+
+# Runtime state from demo agents/resources.
+*.db
+dump.rdb
+
+.DS_Store

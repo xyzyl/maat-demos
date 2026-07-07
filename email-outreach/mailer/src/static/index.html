@@ -1,0 +1,35 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Outreach Mailer</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:900px;margin:2em auto;padding:0 1em;color:#1a1a1a}
+h1{font-size:1.4em;margin-bottom:0.2em}
+.muted{color:#666;font-size:0.9em}
+table{width:100%;border-collapse:collapse;margin-top:1em;font-size:0.85em}
+th,td{border-bottom:1px solid #eee;padding:0.4em;text-align:left;vertical-align:top}
+th{background:#f7f7f7}
+.sent{color:#0a7a25}.rejected{color:#a40000}
+code{font-family:ui-monospace,monospace;font-size:0.9em}
+</style></head><body>
+<h1>Outreach Mailer — Audit</h1>
+<p class="muted">Stub-sends recorded; nothing is actually transmitted. Real SMTP integration deferred.</p>
+<table id="sends">
+  <thead><tr><th>When</th><th>Status</th><th>Recipients</th><th>Body hash</th><th>Receipt</th><th>Reason</th></tr></thead>
+  <tbody></tbody>
+</table>
+<script>
+async function refresh(){
+  const r=await fetch("/mailer/v1/sends");const rows=await r.json();
+  const tb=document.querySelector("#sends tbody");tb.innerHTML="";
+  for(const s of rows){
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${new Date(s.created_at).toLocaleString()}</td>
+      <td class="${s.status}">${s.status}</td>
+      <td>${s.recipients.map(e=>e.replace(/[<>]/g,"")).join(", ")}</td>
+      <td><code>${s.content_hash_hex.slice(0,12)}…</code></td>
+      <td><code>${s.maat_receipt_id_b64.slice(0,12)}…</code></td>
+      <td>${s.rejection_reason||""}</td>`;
+    tb.appendChild(tr);
+  }
+}
+refresh();setInterval(refresh,3000);
+</script></body></html>

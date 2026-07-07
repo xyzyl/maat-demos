@@ -1,0 +1,23 @@
+[package]
+name = "maat-demos-testkit"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "maat_demos_testkit"
+path = "src/lib.rs"
+
+[dependencies]
+maat            = { workspace = true }
+maat-sdk-core   = { workspace = true }
+maat-agent      = { workspace = true }
+maat-resource   = { workspace = true }
+
+tokio        = { workspace = true }
+reqwest      = { workspace = true }
+serde        = { workspace = true }
+serde_json   = { workspace = true }
+base64       = { workspace = true }
+anyhow       = { workspace = true }
+uuid         = { workspace = true }
+chrono       = { workspace = true }

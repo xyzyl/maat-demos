@@ -1,0 +1,34 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Deploy Runner</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:900px;margin:2em auto;padding:0 1em;color:#1a1a1a}
+h1{font-size:1.4em;margin-bottom:0.2em}
+.muted{color:#666;font-size:0.9em}
+table{width:100%;border-collapse:collapse;margin-top:1em;font-size:0.85em}
+th,td{border-bottom:1px solid #eee;padding:0.4em;text-align:left;vertical-align:top}
+th{background:#f7f7f7}
+.deployed{color:#0a7a25}.rejected{color:#a40000}
+code{font-family:ui-monospace,monospace;font-size:0.9em}
+</style></head><body>
+<h1>Deploy Runner — Audit</h1>
+<p class="muted">Stub-deploys (no commands executed). Real runner integration deferred.</p>
+<table id="d"><thead><tr>
+  <th>When</th><th>Status</th><th>Env</th><th>Service</th><th>Commit</th><th>Receipt</th><th>Reason</th>
+</tr></thead><tbody></tbody></table>
+<script>
+async function r(){
+  const x=await fetch("/runner/v1/deploys");const rows=await x.json();
+  const tb=document.querySelector("#d tbody");tb.innerHTML="";
+  for(const d of rows){
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${new Date(d.created_at).toLocaleString()}</td>
+      <td class="${d.status}">${d.status}</td>
+      <td>${d.environment}</td><td>${d.service}</td>
+      <td><code>${d.commit_hash.slice(0,12)}</code></td>
+      <td><code>${d.maat_receipt_id_b64.slice(0,12)}…</code></td>
+      <td>${d.rejection_reason||""}</td>`;
+    tb.appendChild(tr);
+  }
+}
+r();setInterval(r,3000);
+</script></body></html>

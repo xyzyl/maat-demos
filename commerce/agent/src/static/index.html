@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Maat agent</title>
+<style>
+  :root {
+    --ink-50:#f6f7f9; --ink-100:#eceef2; --ink-200:#d5d9e2; --ink-300:#aab1c0;
+    --ink-400:#7c8497; --ink-500:#5a6275; --ink-700:#323847; --ink-800:#212635;
+    --ink-900:#161b27; --ink-950:#0c1019;
+    --accent:#22c1d3; --accent-bright:#5dd8e4;
+    --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--ink-950);
+    color: var(--ink-100);
+    min-height: 100vh;
+  }
+  header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--ink-800);
+    display: flex;
+    align-items: baseline;
+    gap: .75rem;
+  }
+  header h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  header .badge {
+    font-size: .65rem;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  header .pill {
+    margin-left: auto;
+    font-size: .7rem;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .pill-awaiting { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+  .pill-ready    { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .pill-active   { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+  .pill-idle     { color: var(--ink-400); background: var(--ink-800); }
+  main {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .col { display: flex; flex-direction: column; gap: 1rem; }
+  section {
+    background: rgba(22,27,39,0.8);
+    border: 1px solid var(--ink-800);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  h2 {
+    font-size: .75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--ink-400);
+    margin: 0 0 .75rem 0;
+  }
+  .pubkey {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .75rem;
+    word-break: break-all;
+    background: var(--ink-950);
+    border: 1px solid var(--ink-800);
+    border-radius: 6px;
+    padding: .65rem;
+    color: var(--accent-bright);
+  }
+  button.copy {
+    background: var(--ink-800);
+    color: var(--ink-200);
+    border: 1px solid var(--ink-700);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: .75rem;
+    cursor: pointer;
+    margin-top: .5rem;
+  }
+  button.copy:hover { background: var(--ink-700); }
+  textarea, input[type=number], input[type=text], select {
+    width: 100%;
+    background: var(--ink-950);
+    border: 1px solid var(--ink-800);
+    border-radius: 6px;
+    color: var(--ink-100);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .8rem;
+    padding: .5rem;
+  }
+  textarea { min-height: 8rem; resize: vertical; }
+  label.row {
+    display: block;
+    margin: .5rem 0 .25rem 0;
+    font-size: .7rem;
+    color: var(--ink-400);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+  }
+  button.primary {
+    background: var(--accent);
+    color: var(--ink-950);
+    border: none;
+    border-radius: 6px;
+    padding: .55rem 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: .65rem;
+  }
+  button.primary:hover { background: var(--accent-bright); }
+  button.danger {
+    background: var(--ink-800);
+    color: var(--bad);
+    border: 1px solid color-mix(in srgb, var(--bad) 40%, transparent);
+    border-radius: 6px;
+    padding: .35rem .7rem;
+    font-size: .75rem;
+    cursor: pointer;
+    margin-left: .5rem;
+  }
+  .delegation-summary {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .8rem;
+    color: var(--ink-200);
+  }
+  .delegation-summary div { margin: .25rem 0; }
+  .delegation-summary .label { color: var(--ink-500); margin-right: .5rem; }
+  .err {
+    color: var(--bad);
+    font-size: .8rem;
+    margin-top: .5rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .ok-msg {
+    color: var(--ok);
+    font-size: .8rem;
+    margin-top: .5rem;
+  }
+  .log {
+    background: var(--ink-950);
+    border: 1px solid var(--ink-800);
+    border-radius: 6px;
+    padding: .5rem;
+    max-height: 60vh;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .8rem;
+  }
+  .log-entry {
+    padding: .25rem 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--ink-800) 50%, transparent);
+    display: flex;
+    gap: .65rem;
+    align-items: baseline;
+  }
+  .log-entry:last-child { border-bottom: none; }
+  .log-time { color: var(--ink-500); flex-shrink: 0; min-width: 5.5rem; }
+  .log-message { color: var(--ink-200); }
+  .log-info    .log-message { color: var(--ink-300); }
+  .log-success .log-message { color: var(--ok); }
+  .log-warn    .log-message { color: var(--warn); }
+  .log-error   .log-message { color: var(--bad); }
+  .empty {
+    text-align: center;
+    padding: 2rem;
+    color: var(--ink-500);
+    font-style: italic;
+    font-size: .85rem;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Maat agent</h1>
+  <span class="badge">demo</span>
+  <span id="phase-pill" class="pill pill-awaiting">awaiting</span>
+</header>
+<main>
+  <div class="col">
+    <section>
+      <h2>Identity</h2>
+      <div class="pubkey" id="pubkey">…</div>
+      <button class="copy" onclick="copyPubkey()">Copy public key</button>
+    </section>
+
+    <section id="delegation-panel">
+      <h2>Delegation</h2>
+      <div id="delegation-state"></div>
+    </section>
+
+    <section id="goal-panel" style="display:none">
+      <h2>Goal</h2>
+      <label class="row" for="max-total">Max total spend (cents)</label>
+      <input type="number" id="max-total" value="4000" min="1">
+      <label class="row" for="max-item">Max per item (cents)</label>
+      <input type="number" id="max-item" value="2000" min="1">
+      <label class="row" for="mode">Mode</label>
+      <select id="mode">
+        <option value="">happy path</option>
+        <option value="per_action_cap">force per-action cap rejection</option>
+        <option value="amount_mismatch">force store amount-mismatch</option>
+      </select>
+      <button class="primary" onclick="submitGoal()">Run</button>
+      <div id="goal-msg"></div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section>
+      <h2>Activity</h2>
+      <div id="log" class="log empty">No activity yet.</div>
+    </section>
+  </div>
+</main>
+
+<script>
+const PHASE_CLASS = {
+  awaiting_delegation: "pill-awaiting",
+  ready: "pill-ready",
+  active: "pill-active",
+  idle: "pill-idle",
+};
+const PHASE_LABEL = {
+  awaiting_delegation: "awaiting",
+  ready: "ready",
+  active: "active",
+  idle: "idle",
+};
+
+let lastPhase = null;
+
+async function refreshStatus() {
+  try {
+    const r = await fetch("/agent/v1/status");
+    const s = await r.json();
+    document.getElementById("pubkey").textContent = s.public_key_b64;
+    const pill = document.getElementById("phase-pill");
+    pill.className = "pill " + (PHASE_CLASS[s.phase] || "pill-idle");
+    pill.textContent = PHASE_LABEL[s.phase] || s.phase;
+
+    renderDelegation(s);
+
+    const goalPanel = document.getElementById("goal-panel");
+    if (s.phase === "ready" || s.phase === "idle" || s.phase === "active") {
+      goalPanel.style.display = "block";
+    } else {
+      goalPanel.style.display = "none";
+    }
+
+    lastPhase = s.phase;
+  } catch (e) {
+    console.error("status fetch failed", e);
+  }
+}
+
+function renderDelegation(s) {
+  const el = document.getElementById("delegation-state");
+  if (s.delegation) {
+    el.innerHTML = `
+      <div class="delegation-summary">
+        <div><span class="label">id:</span>${s.delegation.id_b64.slice(0, 10)}…${s.delegation.id_b64.slice(-6)}</div>
+        <div><span class="label">scopes:</span>${s.delegation.scope_grants.join(", ")}</div>
+        <div><span class="label">expires:</span>${new Date(s.delegation.not_after * 1000).toLocaleString()}</div>
+        <div><span class="label">constraints:</span>${s.delegation.constraint_count}</div>
+      </div>
+      <button class="danger" onclick="clearDelegation()">Clear delegation</button>
+    `;
+  } else {
+    el.innerHTML = `
+      <p style="color: var(--ink-400); font-size: .85rem; margin: 0 0 .5rem 0;">
+        Paste the signed delegation JSON from the dashboard:
+      </p>
+      <textarea id="delegation-input" placeholder='{"id":"...","agent":{...},"scope":{...}, ...}'></textarea>
+      <button class="primary" onclick="acceptDelegation()">Validate &amp; activate</button>
+      <div id="delegation-msg"></div>
+    `;
+  }
+}
+
+async function acceptDelegation() {
+  const json = document.getElementById("delegation-input").value.trim();
+  const msg = document.getElementById("delegation-msg");
+  msg.textContent = "";
+  if (!json) {
+    msg.className = "err";
+    msg.textContent = "Paste a delegation first.";
+    return;
+  }
+  try {
+    const r = await fetch("/agent/v1/delegation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ delegation_json: json }),
+    });
+    const body = await r.json();
+    if (r.ok) {
+      msg.className = "ok-msg";
+      msg.textContent = "Accepted.";
+      refreshStatus();
+    } else {
+      msg.className = "err";
+      msg.textContent = body.error || "rejected";
+    }
+  } catch (e) {
+    msg.className = "err";
+    msg.textContent = String(e);
+  }
+}
+
+async function clearDelegation() {
+  await fetch("/agent/v1/delegation", { method: "DELETE" });
+  refreshStatus();
+}
+
+async function submitGoal() {
+  const total = parseInt(document.getElementById("max-total").value, 10);
+  const item = parseInt(document.getElementById("max-item").value, 10);
+  const mode = document.getElementById("mode").value || null;
+  const msg = document.getElementById("goal-msg");
+  msg.textContent = "";
+  try {
+    const r = await fetch("/agent/v1/goal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        max_total_cents: total,
+        max_per_item_cents: item,
+        mode,
+      }),
+    });
+    const body = await r.json();
+    if (r.ok) {
+      msg.className = "ok-msg";
+      msg.textContent = "Loop started.";
+      refreshStatus();
+    } else {
+      msg.className = "err";
+      msg.textContent = body.error || "rejected";
+    }
+  } catch (e) {
+    msg.className = "err";
+    msg.textContent = String(e);
+  }
+}
+
+function copyPubkey() {
+  const txt = document.getElementById("pubkey").textContent;
+  navigator.clipboard.writeText(txt);
+}
+
+function appendLog(entry) {
+  const log = document.getElementById("log");
+  if (log.classList.contains("empty")) {
+    log.classList.remove("empty");
+    log.innerHTML = "";
+  }
+  const div = document.createElement("div");
+  div.className = "log-entry log-" + entry.level;
+  div.innerHTML = `
+    <span class="log-time">${new Date(entry.at).toLocaleTimeString()}</span>
+    <span class="log-message">${escape(entry.message)}</span>
+  `;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function escape(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+const sse = new EventSource("/agent/v1/log");
+sse.addEventListener("activity", (e) => {
+  try {
+    const entry = JSON.parse(e.data);
+    appendLog(entry);
+  } catch {}
+});
+
+refreshStatus();
+setInterval(refreshStatus, 1500);
+</script>
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Maat Goods — demo store</title>
+<style>
+  :root {
+    --ink-50:#f6f7f9; --ink-100:#eceef2; --ink-200:#d5d9e2; --ink-300:#aab1c0;
+    --ink-400:#7c8497; --ink-500:#5a6275; --ink-700:#323847; --ink-800:#212635;
+    --ink-900:#161b27; --ink-950:#0c1019;
+    --accent:#22c1d3; --accent-bright:#5dd8e4;
+    --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--ink-950);
+    color: var(--ink-100);
+    min-height: 100vh;
+  }
+  header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--ink-800);
+    display: flex;
+    align-items: baseline;
+    gap: .75rem;
+  }
+  header h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  header .badge {
+    font-size: .65rem;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  header .meta {
+    margin-left: auto;
+    font-size: .8rem;
+    color: var(--ink-400);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  main {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  section {
+    background: rgba(22,27,39,0.8);
+    border: 1px solid var(--ink-800);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  h2 {
+    font-size: .75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--ink-400);
+    margin: 0 0 .75rem 0;
+  }
+  .product {
+    display: flex;
+    justify-content: space-between;
+    padding: .65rem 0;
+    border-bottom: 1px solid var(--ink-800);
+    font-size: .9rem;
+  }
+  .product:last-child { border-bottom: none; }
+  .product .name { color: var(--ink-100); }
+  .product .sku {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .7rem;
+    color: var(--ink-500);
+    margin-left: .5rem;
+  }
+  .product .price {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--ink-200);
+    tabular-nums: 1;
+  }
+  .tx {
+    padding: .65rem 0;
+    border-bottom: 1px solid var(--ink-800);
+    font-size: .85rem;
+  }
+  .tx:last-child { border-bottom: none; }
+  .tx-row1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: .25rem;
+  }
+  .pill {
+    font-size: .65rem;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-weight: 500;
+  }
+  .pill-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+  .pill-bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
+  .pill-warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+  .tx-amount {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--ink-100);
+    font-weight: 500;
+  }
+  .tx-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .7rem;
+    color: var(--ink-500);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .tx-meta .label { color: var(--ink-600); }
+  .tx-error {
+    font-size: .75rem;
+    color: var(--bad);
+    margin-top: .25rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .empty {
+    text-align: center;
+    padding: 2rem;
+    color: var(--ink-500);
+    font-style: italic;
+    font-size: .85rem;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Maat Goods</h1>
+  <span class="badge">demo store</span>
+  <span class="meta">Stripe test mode &nbsp;·&nbsp; receipts honored from Maat</span>
+</header>
+<main>
+  <section id="products">
+    <h2>Catalog</h2>
+    <div id="product-list" class="empty">Loading…</div>
+  </section>
+  <section id="transactions">
+    <h2>Live transaction log</h2>
+    <div id="tx-list" class="empty">No transactions yet.</div>
+  </section>
+</main>
+
+<script>
+function fmtMoney(amountMinor, currency) {
+  // products and txs come back in minor units (cents). Demo assumes 2 decimals.
+  const major = (amountMinor / 100).toFixed(2);
+  return `${major} ${currency}`;
+}
+
+function shorten(s, head=6, tail=4) {
+  if (!s || s.length <= head + tail + 1) return s || "—";
+  return `${s.slice(0, head)}…${s.slice(-tail)}`;
+}
+
+function fmtTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleTimeString();
+}
+
+async function loadProducts() {
+  try {
+    const r = await fetch("/store/v1/products");
+    const items = await r.json();
+    const el = document.getElementById("product-list");
+    if (!items.length) {
+      el.className = "empty";
+      el.textContent = "No products seeded.";
+      return;
+    }
+    el.className = "";
+    el.innerHTML = items.map(p => `
+      <div class="product">
+        <span>
+          <span class="name">${p.name}</span>
+          <span class="sku">${p.sku}</span>
+        </span>
+        <span class="price">${fmtMoney(p.price_cents, p.currency)}</span>
+      </div>
+    `).join("");
+  } catch (e) {
+    document.getElementById("product-list").textContent = "Error loading products.";
+  }
+}
+
+async function loadTransactions() {
+  try {
+    const r = await fetch("/store/v1/transactions");
+    const items = await r.json();
+    const el = document.getElementById("tx-list");
+    if (!items.length) {
+      el.className = "empty";
+      el.textContent = "No transactions yet.";
+      return;
+    }
+    el.className = "";
+    el.innerHTML = items.map(t => {
+      const pillClass =
+        t.status === "succeeded" ? "pill-ok" :
+        t.status === "rejected"  ? "pill-warn" :
+                                    "pill-bad";
+      return `
+        <div class="tx">
+          <div class="tx-row1">
+            <span class="tx-amount">${fmtMoney(t.amount_cents, t.currency)}</span>
+            <span class="pill ${pillClass}">${t.status}</span>
+          </div>
+          <div class="tx-meta">
+            <span><span class="label">at</span> ${fmtTime(t.created_at)}</span>
+            <span><span class="label">receipt</span> ${shorten(t.maat_receipt_id_b64)}</span>
+            ${t.stripe_payment_intent_id
+              ? `<span><span class="label">stripe</span> ${shorten(t.stripe_payment_intent_id, 8, 6)}</span>`
+              : ""}
+          </div>
+          ${t.rejection_reason ? `<div class="tx-error">rejected: ${t.rejection_reason}</div>` : ""}
+          ${t.stripe_error ? `<div class="tx-error">stripe: ${t.stripe_error}</div>` : ""}
+        </div>
+      `;
+    }).join("");
+  } catch (e) {
+    document.getElementById("tx-list").textContent = "Error loading transactions.";
+  }
+}
+
+loadProducts();
+loadTransactions();
+setInterval(loadTransactions, 1500);
+</script>
+</body>
+</html>
